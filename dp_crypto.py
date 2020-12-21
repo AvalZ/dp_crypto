@@ -121,7 +121,7 @@ def test_keypos(key_charset, unprintable, found, session):
 
 def get_key(session):
     global char_requests
-    found = ''
+    found = args.found
     unprintable = False
 
     key_length = args.key_len
@@ -131,9 +131,11 @@ def get_key(session):
         key_charset = ''
         for i in range(256):
             key_charset += chr(i)
-    else:
-        if key_charset == 'hex':
-            key_charset = '01234567890ABCDEF'
+    elif key_charset == 'printable':
+        # Printable ascii range, minus delete
+        key_charset = "".join([chr(c) for c in range(32, 127)])
+    elif key_charset == 'hex':
+        key_charset = '01234567890ABCDEF'
 
     print("Attacking " + args.url)
     print(
@@ -152,7 +154,7 @@ def get_key(session):
         ) +
         "]\n"
     )
-    for i in range(int(key_length)):
+    for i in range(len(found),int(key_length)):
         pos_str = (
             str(i + 1)
             if i > 8
@@ -336,9 +338,10 @@ brute_parser.add_argument('-u', '--url', action='store', type=str, help='Target 
 brute_parser.add_argument('-l', '--key-len', action='store', type=int, default=48, help='Len of the key to retrieve, OPTIONAL: default is 48')
 brute_parser.add_argument('-o', '--oracle', action='store', type=str, default='Index was outside the bounds of the array.', help='The oracle text to use. OPTIONAL: default value is for english version, other languages may have other error message')
 brute_parser.add_argument('-v', '--version', action='store', type=str, default='', help='OPTIONAL. Specify the version to use rather than iterating over all of them')
-brute_parser.add_argument('-c', '--charset', action='store', type=str, default='hex', help='Charset used by the key, can use all, hex, or user defined. OPTIONAL: default is hex')
+brute_parser.add_argument('-c', '--charset', action='store', type=str, default='hex', help='Charset used by the key, can use all, hex, printable, or user defined. OPTIONAL: default is hex')
 brute_parser.add_argument('-a', '--accuracy', action='store', type=int, default=9, help='Maximum accuracy is out of 64 where 64 is the most accurate, \
     accuracy of 9 will usually suffice for a hex, but 21 or more might be needed when testing all ascii characters. Increase the accuracy argument if no valid version is found. OPTIONAL: default is 9.')
+brute_parser.add_argument('-f', '--found', action='store', type=str, default='', help='Resume bruteforcing from a checkpoint. OPTIONAL')
 brute_parser.add_argument('-p', '--proxy', action='store', type=str, default='', help='Specify OPTIONAL proxy server, e.g. 127.0.0.1:8080')
 
 encode_parser = subparsers.add_parser('b', help='Encode parameter to base64')

